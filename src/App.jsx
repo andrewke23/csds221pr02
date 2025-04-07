@@ -72,7 +72,7 @@ function createData(id, title, description, deadline, priority, isComplete) {
 
 let rows = [];
 
-function ScrollTop(props) {
+function ScrollToTop(props) {
   const { children, window } = props;
   // will default to window.
   const trigger = useScrollTrigger({
@@ -106,7 +106,7 @@ function ScrollTop(props) {
   );
 }
 
-ScrollTop.propTypes = {
+ScrollToTop.propTypes = {
   children: PropTypes.element.isRequired,
   window: PropTypes.func,
 };
@@ -696,11 +696,11 @@ export default function BackToTop(props) {
             </TableBody>
           </Table>
         </TableContainer>
-        <ScrollTop {...props}>
+        <ScrollToTop {...props}>
           <Fab size="small" aria-label="scroll back to top">
             <KeyboardArrowUpIcon />
           </Fab>
-        </ScrollTop>
+        </ScrollToTop>
       </React.Fragment>
     </ThemeProvider>
   );
