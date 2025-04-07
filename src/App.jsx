@@ -40,8 +40,10 @@ import RadioGroup from '@mui/material/RadioGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
-import { useSnackbar } from 'notistack';
+import {useSnackbar} from 'notistack';
+
 import DoDisturbIcon from '@mui/icons-material/DoDisturb';
+
 import uuid from 'react-uuid';
 import dayjs from 'dayjs';
 import { useEffect } from 'react';
@@ -72,9 +74,8 @@ function createData(id, title, description, deadline, priority, isComplete) {
 
 let rows = [];
 
-function ScrollToTop(props) {
+function ScrollTop(props) {
   const { children, window } = props;
-  // will default to window.
   const trigger = useScrollTrigger({
     target: window ? window() : undefined,
     disableHysteresis: true,
@@ -106,35 +107,39 @@ function ScrollToTop(props) {
   );
 }
 
-ScrollToTop.propTypes = {
+ScrollTop.propTypes = {
   children: PropTypes.element.isRequired,
   window: PropTypes.func,
 };
 
 function TodoPopup(props) {
   const { item, onClose, onUpdate, onAdd, open, isAdd, titles } = props;
-  const [title, setTitle] = React.useState(item.title);
+  const [title, setTitle] = React.useState(item.title || '');
   const [titleEmpty, setTitleEmpty] = React.useState(false);
   const [titleHelperText, setTitleHelperText] = React.useState('');
 
-  const [description, setDescription] = React.useState(item.description);
+  const [description, setDescription] = React.useState(item.description || '');
   const [descriptionEmpty, setDescriptionEmpty] = React.useState(false);
   const [descriptionHelperText, setDescriptionHelperText] = React.useState('');
 
-  const [selectedDate, setSelectedDate] = React.useState(dayjs(item.deadline));
+  const [selectedDate, setSelectedDate] = React.useState(
+    item.deadline ? dayjs(item.deadline) : dayjs()
+  );
   const [selectedDateEmpty, setSelectedDateEmpty] = React.useState(false);
-  const [selectedDateHelperText, setSelectedDateHelperText] =
-    React.useState('');
+  const [selectedDateHelperText, setSelectedDateHelperText] = React.useState('');
 
-  const [priority, setPriority] = React.useState(item.priority);
+  const [priority, setPriority] = React.useState(item.priority || 'low');
   const [priorityEmpty, setPriorityEmpty] = React.useState(false);
   const [priorityHelperText, setPriorityHelperText] = React.useState('');
 
   useEffect(() => {
-    setDescription(item.description);
-    setSelectedDate(dayjs(item.deadline));
-    setPriority(item.priority);
-  }, [props.item]);
+    if (item) {
+      setTitle(item.title || '');
+      setDescription(item.description || '');
+      setSelectedDate(item.deadline ? dayjs(item.deadline) : dayjs());
+      setPriority(item.priority || 'low');
+    }
+  }, [item, open]);
 
   const handleTitleChange = (value) => {
     setTitle(value);
@@ -146,7 +151,11 @@ function TodoPopup(props) {
       setTitleEmpty(false);
       setTitleHelperText('');
     }
-    if (titles.includes(value)) {
+    
+    if (!isAdd && value === item.title) {
+      setTitleEmpty(false);
+      setTitleHelperText('');
+    } else if (titles.includes(value)) {
       setTitleEmpty(true);
       setTitleHelperText('Title must be unique!');
     }
@@ -186,12 +195,7 @@ function TodoPopup(props) {
   };
 
   const handleClose = () => {
-    if (item) {
-      handleTitleChange(item.title);
-      handleDescriptionChange(item.description);
-      handleDateChange(dayjs(item.deadline));
-      handlePriorityChange(item.priority);
-    }
+    // Reset the form state
     setTitleEmpty(false);
     setTitleHelperText('');
     setDescriptionEmpty(false);
@@ -204,37 +208,43 @@ function TodoPopup(props) {
   };
 
   const checks = () => {
-    if (titles.includes(title)) {
+    let hasErrors = false;
+    
+    if (isAdd && titles.includes(title)) {
       setTitleEmpty(true);
       setTitleHelperText('Title must be unique!');
+      hasErrors = true;
     }
+    
     if (title.length === 0) {
       setTitleEmpty(true);
       setTitleHelperText('Title is Required!');
+      hasErrors = true;
     }
+    
     if (description.length === 0) {
       setDescriptionEmpty(true);
       setDescriptionHelperText('Description is Required!');
+      hasErrors = true;
     }
+    
     if (priority.length === 0) {
       setPriorityEmpty(true);
       setPriorityHelperText('Priority is Required!');
+      hasErrors = true;
     }
+    
     if (selectedDate === null) {
       setSelectedDateEmpty(true);
       setSelectedDateHelperText('Deadline is Required!');
+      hasErrors = true;
     }
+    
+    return !hasErrors;
   };
 
   const handleAdd = () => {
-    checks();
-    if (
-      !titles.includes(title) &&
-      selectedDate !== null &&
-      priority.length !== 0 &&
-      title.length !== 0 &&
-      description.length !== 0
-    ) {
+    if (checks()) {
       onAdd(
         createData(
           item.id,
@@ -254,14 +264,15 @@ function TodoPopup(props) {
   };
 
   const handleEdit = () => {
-    checks();
-    if (
-      selectedDate !== null &&
-      priority.length !== 0 &&
-      title.length !== 0 &&
-      description.length !== 0
-    ) {
-      onUpdate(item.id, description, selectedDate.format('MM/DD/YY'), priority);
+    if (checks()) {
+      // Pass all the required data for update
+      onUpdate(
+        item.id, 
+        title,  
+        description, 
+        selectedDate.format('MM/DD/YY'), 
+        priority
+      );
       handleClose();
     }
   };
@@ -269,9 +280,7 @@ function TodoPopup(props) {
   const editButton = () => {
     return (
       <Button
-        onClick={(e) => {
-          handleEdit();
-        }}
+        onClick={handleEdit}
         variant="contained"
         size="large"
         startIcon={<EditIcon />}
@@ -286,9 +295,7 @@ function TodoPopup(props) {
   const addButton = () => {
     return (
       <Button
-        onClick={(e) => {
-          handleAdd();
-        }}
+        onClick={handleAdd}
         variant="contained"
         size="large"
         startIcon={<AddCircleIcon />}
@@ -364,7 +371,16 @@ function TodoPopup(props) {
           padding: '32px 32px 18px 32px',
         }}
       >
-        {isAdd && titleBlock()}
+        {isAdd ? titleBlock() : (
+          <TextField
+            value={title}
+            disabled={!isAdd}  
+            id="outlined-basic"
+            label="Title"
+            variant="outlined"
+            sx={{ width: '280px', paddingBottom: '32px' }}
+          />
+        )}
         <TextField
           value={description}
           onChange={(e) => handleDescriptionChange(e.target.value)}
@@ -426,9 +442,7 @@ function TodoPopup(props) {
         {!isAdd && editButton()}
         {isAdd && addButton()}
         <Button
-          onClick={(e) => {
-            handleClose();
-          }}
+          onClick={handleClose}
           variant="contained"
           size="large"
           startIcon={<DoDisturbIcon />}
@@ -456,7 +470,6 @@ export default function BackToTop(props) {
   const [addPopupOpen, setAddPopupOpen] = React.useState(false);
   const [editPopupOpen, setEditPopupOpen] = React.useState(false);
   const [todoList, updateTodoList] = useImmer(rows);
-  // Use an empty object with default values as a placeholder when there are no items
   const emptyTodo = createData(
     uuid(),
     '',
@@ -477,7 +490,7 @@ export default function BackToTop(props) {
   };
 
   const handleClickEditOpen = (item) => {
-    setSelectedRow(item);
+    setSelectedRow({...item});
     setEditPopupOpen(true);
   };
 
@@ -500,7 +513,6 @@ export default function BackToTop(props) {
     enqueueSnackbar('Task was deleted successfully!', {
       variant: 'success',
       autoHideDuration: 5000,
-      // anchorOrigin: { vertical: "top", horizontal: "right" }
     });
   }
 
@@ -511,21 +523,21 @@ export default function BackToTop(props) {
     enqueueSnackbar('Task was added successfully!', {
       variant: 'success',
       autoHideDuration: 5000,
-      // anchorOrigin: { vertical: "top", horizontal: "right" }
     });
   }
 
-  function handleUpdateTodo(id, description, deadline, priority) {
+  function handleUpdateTodo(id, title, description, deadline, priority) {
     updateTodoList((draft) => {
       const todo = draft.find((a) => a.id === id);
-      todo.description = description;
-      todo.deadline = deadline;
-      todo.priority = priority;
+      if (todo) {
+        todo.description = description;
+        todo.deadline = deadline;
+        todo.priority = priority;
+      }
     });
     enqueueSnackbar('Task was updated successfully!', {
       variant: 'success',
       autoHideDuration: 5000,
-      // anchorOrigin: { vertical: "top", horizontal: "right" }
     });
   }
 
@@ -547,9 +559,9 @@ export default function BackToTop(props) {
         </Button>
       );
     }
+    return null;
   }
 
-  // Component to display a message when the todo list is empty
   const EmptyListMessage = () => {
     return (
       <TableRow>
@@ -578,7 +590,7 @@ export default function BackToTop(props) {
           )}
           onClose={handleClose}
           onAdd={handleAddTodo}
-          onUpdate={() => {}}
+          onUpdate={handleUpdateTodo}
           isAdd={true}
         />
         <TodoPopup
@@ -586,7 +598,7 @@ export default function BackToTop(props) {
           open={editPopupOpen}
           item={selectedRow}
           onClose={handleEditClose}
-          onAdd={() => {}}
+          onAdd={handleAddTodo}
           onUpdate={handleUpdateTodo}
           isAdd={false}
         />
@@ -606,9 +618,7 @@ export default function BackToTop(props) {
               </Typography>
             </Container>
             <Button
-              onClick={(e) => {
-                handleClickOpen();
-              }}
+              onClick={handleClickOpen}
               variant="contained"
               size="large"
               startIcon={<AddCircleIcon />}
@@ -658,7 +668,7 @@ export default function BackToTop(props) {
                     <TableCell align="center">
                       <Checkbox
                         checked={row.isComplete}
-                        onChange={(e) => {
+                        onChange={() => {
                           handleToggleTodo(row.id);
                         }}
                         inputProps={{ 'aria-label': 'controlled' }}
@@ -675,7 +685,7 @@ export default function BackToTop(props) {
                       >
                         <CanUpdate item={row}></CanUpdate>
                         <Button
-                          onClick={(e) => {
+                          onClick={() => {
                             handleDeleteTodo(row.id);
                           }}
                           variant="contained"
@@ -696,11 +706,11 @@ export default function BackToTop(props) {
             </TableBody>
           </Table>
         </TableContainer>
-        <ScrollToTop {...props}>
+        <ScrollTop {...props}>
           <Fab size="small" aria-label="scroll back to top">
             <KeyboardArrowUpIcon />
           </Fab>
-        </ScrollToTop>
+        </ScrollTop>
       </React.Fragment>
     </ThemeProvider>
   );
